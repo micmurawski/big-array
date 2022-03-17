@@ -2,7 +2,6 @@ from itertools import product
 import numpy as np
 
 shape = (251, 126, 51)
-shape = (256,128,128)
 
 def count_number_of_chunks(shape: int, brick_size):
     x = [round(i/brick_size) for i in shape]
