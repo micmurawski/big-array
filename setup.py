@@ -33,7 +33,7 @@ setup(
     extras_requires={
         "": get_dependencies(),
         "all": get_dependencies("all")
-    }
+    },
     include_package_data=True,
     python_requires=">=3.7,<4.0",
     license="MIT",
