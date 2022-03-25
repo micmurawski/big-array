@@ -27,7 +27,6 @@ class Backend(metaclass=ABCMeta):
 class LocalSystemBackend(Backend):
     def save_chunk(key, chunk: np.array, path: AnyStr) -> None:
         directory = path.rsplit('/', 1)[0]
-        print(directory, os.path.exists(directory))
         if not os.path.exists(directory):
             os.makedirs(directory)
         chunk.tofile(path)
