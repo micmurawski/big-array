@@ -1,6 +1,0 @@
-README.md
-setup.py
-src/big_array.egg-info/PKG-INFO
-src/big_array.egg-info/SOURCES.txt
-src/big_array.egg-info/dependency_links.txt
-src/big_array.egg-info/top_level.txt
