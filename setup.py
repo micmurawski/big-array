@@ -23,7 +23,7 @@ setup(
     description="Cloud implementation of array for Big Data",
     long_description=read('README.md'),
     long_description_content_type="text/markdown",
-    url="https://github.com/micmurawski/cloud-array/",
+    url="https://github.com/micmurawski/big-array/",
     package_dir={"": "src"},
     packages=find_packages(exclude=(
         'build',

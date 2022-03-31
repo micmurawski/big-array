@@ -1,5 +1,4 @@
 import os
-from importlib.metadata import metadata
 from itertools import product
 from typing import AnyStr, Dict, Tuple
 
@@ -7,7 +6,7 @@ import numpy as np
 
 from big_array.backends import Backend, LocalSystemBackend
 from big_array.utils import (chunk2list, compute_key, initial_merge_of_chunks,
-                             is_in, merge_datasets, sort_chunks, varing_dim)
+                             is_in, merge_datasets, sort_chunks)
 
 
 class BigArrayException(Exception):
