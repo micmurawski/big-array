@@ -1,7 +1,7 @@
 import os
 from importlib.metadata import metadata
 from itertools import product
-from typing import AnyStr, Dict, Tuple, Type, Union
+from typing import AnyStr, Dict, Tuple
 
 import numpy as np
 
@@ -19,16 +19,24 @@ class Chunk:
         self.uri = os.path.join(url, str(chunk_number), str(chunk_number))
         self.chunk_number = chunk_number
         self.backend = backend
-        self.chunk_slice = chunk_slice
+        self._slice = chunk_slice
         self.dtype = dtype
 
     @property
     def shape(self):
         return tuple(s.stop-s.start for s in self.chunk_slice)
 
+    @shape.setter
+    def shape(self, _):
+        raise BigArrayException("Cannot change value of shape.")
+
     @property
     def slice(self):
-        return self.chunk_slice
+        return self._slice
+
+    @slice.setter
+    def slice(self, _):
+        raise BigArrayException("Cannot change value of slice")
 
     def __setitem__(self, key: Tuple, data: np.array) -> None:
         return self.backend.save_chunk(key, data, self.uri)
@@ -47,17 +55,42 @@ class BigArray:
         if array is None and shape is None:
             raise BigArrayException(
                 "Shape must be defined by array or shape alone.")
-        self.shape = array.shape if array is not None else shape
-        self.dtype = array.dtype if array is not None else dtype
-        self.chunks_number = self.count_number_of_chunks(
+        self._shape = array.shape if array is not None else shape
+        self._dtype = array.dtype if array is not None else dtype
+        self._chunks_number = self.count_number_of_chunks(
             self.shape, self.chunk_shape)
 
-    def set_shape(self, s):
-        raise BigArrayException("You cannot change value of shape.")
+    @property
+    def shape(self):
+        return self._shape
+
+    @shape.setter
+    def shape(self, _):
+        raise BigArrayException("Cannot change value of shape.")
+
+    @property
+    def dtype(self):
+        return self._dtype
+
+    @dtype.setter
+    def dtype(self, _):
+        raise BigArrayException("Cannot change value of dtype.")
+
+    @property
+    def chunks_number(self):
+        return self._chunks_number
+
+    @chunks_number.setter
+    def chunks_number(self, _):
+        raise BigArrayException("Cannot change value of chunks_number.")
 
     @property
     def metadata(self) -> Dict:
         return LocalSystemBackend.read_metadata(self.url)
+
+    @metadata.setter
+    def metadata(self, _):
+        raise BigArrayException("Cannot change value of metadata.")
 
     def get_metadata(self) -> dict:
         result = {

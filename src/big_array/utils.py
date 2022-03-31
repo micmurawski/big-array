@@ -15,7 +15,8 @@ def is_in(a, b):
     conditions = []
     for i, j in zip(a, b):
         conditions.append(
-            (i.start >= j.start and i.start < j.stop) or (i.stop >= j.start and i.stop < j.stop)
+            (i.start >= j.start and i.start < j.stop) or (
+                i.stop >= j.start and i.stop < j.stop)
         )
     return all(conditions)
 
@@ -120,3 +121,15 @@ def merge_datasets(datasets):
         else:
             dim1 = None
     return result
+
+
+def compute_key(a, b):
+    result = []
+    for i, j in zip(a, b):
+        result.append(
+            slice(
+                j.start + (i.start-j.start),
+                j.stop + (i.stop - j.stop)
+            )
+        )
+    return tuple(result)
