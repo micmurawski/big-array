@@ -1,11 +1,13 @@
 import os
+from importlib.metadata import metadata
 from itertools import product
-from typing import AnyStr, Dict, Tuple, Union, Type
+from typing import AnyStr, Dict, Tuple, Type, Union
 
 import numpy as np
 
 from big_array.backends import Backend, LocalSystemBackend
-from big_array.utils import chunk2list, is_in
+from big_array.utils import (chunk2list, compute_key, initial_merge_of_chunks,
+                             is_in, merge_datasets, sort_chunks, varing_dim)
 
 
 class BigArrayException(Exception):
@@ -13,33 +15,42 @@ class BigArrayException(Exception):
 
 
 class Chunk:
-    def __init__(self, chunk_number: int, url: AnyStr, chunk_slice: Tuple[slice], backend: Backend) -> None:
+    def __init__(self, chunk_number: int, dtype, url: AnyStr, chunk_slice: Tuple[slice], backend: Backend) -> None:
         self.uri = os.path.join(url, str(chunk_number), str(chunk_number))
         self.chunk_number = chunk_number
         self.backend = backend
         self.chunk_slice = chunk_slice
+        self.dtype = dtype
+
+    @property
+    def shape(self):
+        return tuple(s.stop-s.start for s in self.chunk_slice)
 
     @property
     def slice(self):
         return self.chunk_slice
 
-    def __setitem__(self, key: Tuple[Type[slice]], data: np.array) -> None:
+    def __setitem__(self, key: Tuple, data: np.array) -> None:
         return self.backend.save_chunk(key, data, self.uri)
 
-    def __getitem__(self, key: Tuple[Type[slice]]) -> np.array:
-        return self.backend.read_chunk(key)
+    def __getitem__(self, key: Tuple) -> np.array:
+        return self.backend.read_chunk(self.chunk_number, self.uri, self.dtype, self.shape).__getitem__(key)
 
 
 class BigArray:
-    def __init__(self, chunk_shape, array=None, shape=None, url=None, *arg, **kwargs):
+    def __init__(self, chunk_shape, array=None, shape=None, dtype=None, url=None, *arg, **kwargs):
         self.chunk_shape = chunk_shape
         self.url = url
         self.array = array
+        if array is None and dtype is None:
+            raise BigArrayException("Dtype must be defined.")
         if array is None and shape is None:
             raise BigArrayException(
                 "Shape must be defined by array or shape alone.")
         self.shape = array.shape if array is not None else shape
-        self.chunks_number = self.count_number_of_chunks(self.shape, self.chunk_shape)
+        self.dtype = array.dtype if array is not None else dtype
+        self.chunks_number = self.count_number_of_chunks(
+            self.shape, self.chunk_shape)
 
     def set_shape(self, s):
         raise BigArrayException("You cannot change value of shape.")
@@ -51,6 +62,7 @@ class BigArray:
     def get_metadata(self) -> dict:
         result = {
             "chunk_shape": self.chunk_shape,
+            "dtype":  str(self.dtype),
             "chunks": {}
         }
         for i, chunk in enumerate(self.generate_chunks_slices()):
@@ -61,8 +73,10 @@ class BigArray:
         return result
 
     def generate_chunks_slices(self):
-        _ranges = (range(0, a, c)
-                   for c, a in zip(self.chunk_shape, self.shape))
+        _ranges = (
+            range(0, a, c)
+            for c, a in zip(self.chunk_shape, self.shape)
+        )
         p = product(*_ranges)
         for i in p:
             _s = []
@@ -70,8 +84,9 @@ class BigArray:
                 _s.append(
                     slice(
                         i[j],
-                        self.shape[j] if i[j]+self.chunk_shape[j] 
-                        > self.shape[j] else i[j]+self.chunk_shape[j])
+                        self.shape[j] if i[j]+self.chunk_shape[j]
+                        > self.shape[j] else i[j]+self.chunk_shape[j]
+                    )
                 )
 
             yield tuple(_s)
@@ -88,7 +103,7 @@ class BigArray:
             _s.append(
                 slice(
                     val[j],
-                    self.shape[j] if val[j]+self.chunk_shape[j] 
+                    self.shape[j] if val[j]+self.chunk_shape[j]
                     > self.shape[j] else val[j]+self.chunk_shape[j])
             )
         return tuple(_s)
@@ -104,8 +119,10 @@ class BigArray:
 
     def get_chunk(self, chunk_number: int):
         chunk_slice = self.get_chunk_slice_by_number(chunk_number)
-        return Chunk(chunk_number, self.url, chunk_slice, LocalSystemBackend)
-
+        return Chunk(
+            chunk_number=chunk_number, url=self.url, chunk_slice=chunk_slice,
+            dtype=self.dtype, backend=LocalSystemBackend
+        )
 
     def save(self, array=None):
         if array is None and self.array is None:
@@ -115,8 +132,7 @@ class BigArray:
         LocalSystemBackend.save_metadata(metadata, self.url)
         for i in range(self.chunks_number):
             chunk = self.get_chunk(i)
-            chunk[:,:,:] = array[chunk.slice]
-
+            chunk[:, :, :] = array[chunk.slice]
 
     def __getitem__(self, key) -> np.array:
         key = list(key)
@@ -129,5 +145,12 @@ class BigArray:
         chunks = []
         for i, s in enumerate(self.generate_chunks_slices()):
             if is_in(s, key):
-                chunks.append(i)
+                chunks.append((i, s))
 
+        sorted_chunks = sort_chunks(chunks)
+        datasets = initial_merge_of_chunks(self, sorted_chunks)
+        datasets = merge_datasets(datasets)
+
+        if len(datasets) == 1:
+            new_key = compute_key(key, datasets[0][1])
+            return datasets[0][0].__getitem__(new_key)

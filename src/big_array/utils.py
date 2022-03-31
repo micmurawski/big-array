@@ -1,5 +1,7 @@
 from typing import List, Tuple
 
+import numpy as np
+
 
 def chunk2list(chunk: Tuple[slice]) -> List[List[int]]:
     return [[s.start, s.stop, s.step] for s in chunk]
@@ -13,6 +15,108 @@ def is_in(a, b):
     conditions = []
     for i, j in zip(a, b):
         conditions.append(
-            i.start >= j.start and i.start < j.stop
+            (i.start >= j.start and i.start < j.stop) or (i.stop >= j.start and i.stop < j.stop)
         )
     return all(conditions)
+
+
+def varing_dim(a: List[int], b: List[int]):
+    for i, x in enumerate(zip(a, b)):
+        if x[0] != x[1]:
+            return i
+
+
+def sort_chunks(chunks):
+    sorting = []
+    val = None
+    val2 = 1
+    for i in range(len(chunks)-1):
+        r = varing_dim(
+            chunks[i][1],
+            chunks[i+1][1]
+        )
+        if val is None:
+            val = r
+            sorting.append(
+                [
+                    [
+                        chunks[i][0]
+                    ],
+                    r,
+                    chunks[i][1]
+                ]
+            )
+        elif val == r:
+            val2 += 1
+            sorting[-1][0].append(
+                chunks[i][0]
+            )
+            ss = tuple(x[0] if x[0] == x[1] else slice(x[0].start, x[1].stop)
+                       for x in zip(sorting[-1][2], chunks[i+1][1]))
+            sorting[-1][2] = ss
+        else:
+            sorting[-1][0].append(
+                chunks[i][0]
+            )
+            ss = tuple(x[0] if x[0] == x[1] else slice(x[0].start, x[1].stop)
+                       for x in zip(sorting[-1][2], chunks[i][1]))
+            sorting[-1][2] = ss
+            val = None
+            val2 = 0
+
+        if i == len(chunks)-2:
+            sorting[-1][0].append(
+                chunks[i+1][0]
+            )
+    return sorting
+
+
+def initial_merge_of_chunks(self, sorted_chunks):
+    datasets = []
+    for x in sorted_chunks:
+        data = None
+        for i in x[0]:
+            chunk_data = self.get_chunk(i)[:, :, :]
+            if data is None:
+                data = chunk_data
+            else:
+                data = np.concatenate(
+                    (data, chunk_data),
+                    axis=x[1]
+                )
+        datasets.append(
+            (data, x[2])
+        )
+    return datasets
+
+
+def merge_datasets(datasets):
+    dim1 = None
+    result = []
+    data = None
+    ss = None
+    for i in range(len(datasets)-1):
+        dim2 = varing_dim(
+            datasets[i][1],
+            datasets[i+1][1]
+        )
+        if dim1 is None:
+            dim1 = dim2
+            data = np.concatenate(
+                (datasets[i][0], datasets[i+1][0]),
+                axis=dim2
+            )
+            ss = tuple(x[0] if x[0] == x[1] else slice(x[0].start, x[1].stop)
+                       for x in zip(datasets[i][1], datasets[i+1][1]))
+            result.append([data, ss])
+        elif dim1 == dim2:
+            result[-1][0] = np.concatenate(
+                (result[-1][0], datasets[i+1][0]),
+                axis=dim2
+            )
+            ss = tuple(x[0] if x[0] == x[1] else slice(x[0].start, x[1].stop)
+                       for x in zip(ss, datasets[i+1][1]))
+            result[-1][1] = ss
+        else:
+            dim1 = None
+    return result

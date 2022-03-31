@@ -35,9 +35,9 @@ class LocalSystemBackend(Backend):
         with open(os.path.join(path, "metadata.json"), "w") as f:
             f.write(json.dumps(metadata))
 
-    def read_chunk(number, path) -> np.array:
-        with open(path, "b") as f:
-            return np.array.fromfile(f)
+    def read_chunk(number, path, dtype, shape) -> np.array:
+        with open(path) as f:
+            return np.fromfile(f, dtype=dtype).reshape(shape)
 
     def read_metadata(path: AnyStr) -> Dict:
         with open(os.path.join(path, "metadata.json")) as f:
