@@ -4,18 +4,18 @@ from typing import AnyStr, Dict, Tuple
 
 import numpy as np
 
-from big_array.backends import Backend, LocalSystemBackend
-from big_array.utils import (chunk2list, compute_key, initial_merge_of_chunks,
-                             is_in, merge_datasets, sort_chunks)
+from cloud_array.backends import Backend, get_backend
+from cloud_array.utils import (chunk2list, compute_key, initial_merge_of_chunks,
+                               is_in, merge_datasets, sort_chunks)
 
 
-class BigArrayException(Exception):
+class CloudArrayException(Exception):
     pass
 
 
 class Chunk:
     def __init__(self, chunk_number: int, dtype, url: AnyStr, chunk_slice: Tuple[slice], backend: Backend) -> None:
-        self.uri = os.path.join(url, str(chunk_number), str(chunk_number))
+        self.uri = url
         self.chunk_number = chunk_number
         self.backend = backend
         self._slice = chunk_slice
@@ -23,11 +23,11 @@ class Chunk:
 
     @property
     def shape(self):
-        return tuple(s.stop-s.start for s in self.chunk_slice)
+        return tuple(s.stop-s.start for s in self.slice)
 
     @shape.setter
     def shape(self, _):
-        raise BigArrayException("Cannot change value of shape.")
+        raise CloudArrayException("Cannot change value of shape.")
 
     @property
     def slice(self):
@@ -35,29 +35,32 @@ class Chunk:
 
     @slice.setter
     def slice(self, _):
-        raise BigArrayException("Cannot change value of slice")
+        raise CloudArrayException("Cannot change value of slice")
 
-    def __setitem__(self, key: Tuple, data: np.array) -> None:
-        return self.backend.save_chunk(key, data, self.uri)
+    def save(self, data: np.array) -> None:
+        return self.backend.save_chunk(self.chunk_number, data)
 
     def __getitem__(self, key: Tuple) -> np.array:
-        return self.backend.read_chunk(self.chunk_number, self.uri, self.dtype, self.shape).__getitem__(key)
+        return self.backend.read_chunk(self.chunk_number, self.dtype, self.shape).__getitem__(key)
 
 
-class BigArray:
-    def __init__(self, chunk_shape, array=None, shape=None, dtype=None, url=None, *arg, **kwargs):
+class CloudArray:
+    def __init__(self, chunk_shape, array=None, shape=None, dtype=None, url=None, config={}):
         self.chunk_shape = chunk_shape
         self.url = url
         self.array = array
         if array is None and dtype is None:
-            raise BigArrayException("Dtype must be defined.")
+            raise CloudArrayException("Dtype must be defined.")
         if array is None and shape is None:
-            raise BigArrayException(
+            raise CloudArrayException(
                 "Shape must be defined by array or shape alone.")
         self._shape = array.shape if array is not None else shape
         self._dtype = array.dtype if array is not None else dtype
         self._chunks_number = self.count_number_of_chunks(
-            self.shape, self.chunk_shape)
+            self.shape,
+            self.chunk_shape
+        )
+        self.backend = get_backend(url, config)
 
     @property
     def shape(self):
@@ -65,7 +68,7 @@ class BigArray:
 
     @shape.setter
     def shape(self, _):
-        raise BigArrayException("Cannot change value of shape.")
+        raise CloudArrayException("Cannot change value of shape.")
 
     @property
     def dtype(self):
@@ -73,7 +76,7 @@ class BigArray:
 
     @dtype.setter
     def dtype(self, _):
-        raise BigArrayException("Cannot change value of dtype.")
+        raise CloudArrayException("Cannot change value of dtype.")
 
     @property
     def chunks_number(self):
@@ -81,15 +84,15 @@ class BigArray:
 
     @chunks_number.setter
     def chunks_number(self, _):
-        raise BigArrayException("Cannot change value of chunks_number.")
+        raise CloudArrayException("Cannot change value of chunks_number.")
 
     @property
     def metadata(self) -> Dict:
-        return LocalSystemBackend.read_metadata(self.url)
+        return self.backend.read_metadata()
 
     @metadata.setter
     def metadata(self, _):
-        raise BigArrayException("Cannot change value of metadata.")
+        raise CloudArrayException("Cannot change value of metadata.")
 
     def get_metadata(self) -> dict:
         result = {
@@ -153,18 +156,18 @@ class BigArray:
         chunk_slice = self.get_chunk_slice_by_number(chunk_number)
         return Chunk(
             chunk_number=chunk_number, url=self.url, chunk_slice=chunk_slice,
-            dtype=self.dtype, backend=LocalSystemBackend
+            dtype=self.dtype, backend=self.backend
         )
 
     def save(self, array=None):
         if array is None and self.array is None:
-            raise BigArrayException("Array is not declared.")
+            raise CloudArrayException("Array is not declared.")
         array = array or self.array
         metadata = self.get_metadata()
-        LocalSystemBackend.save_metadata(metadata, self.url)
+        self.backend.save_metadata(metadata)
         for i in range(self.chunks_number):
             chunk = self.get_chunk(i)
-            chunk[:, :, :] = array[chunk.slice]
+            chunk.save(array[chunk.slice])
 
     def __getitem__(self, key) -> np.array:
         key = list(key)

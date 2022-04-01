@@ -16,14 +16,14 @@ def get_dependencies(subpackage="requirements"):
 
 
 setup(
-    name='big_array',
+    name='cloud_array',
     version='0.0.1',
     author="Michal Murawski",
     author_email="mmurawski777@gmail.com",
     description="Cloud implementation of array for Big Data",
     long_description=read('README.md'),
     long_description_content_type="text/markdown",
-    url="https://github.com/micmurawski/big-array/",
+    url="https://github.com/micmurawski/cloud-array/",
     package_dir={"": "src"},
     packages=find_packages(exclude=(
         'build',
