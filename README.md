@@ -1,6 +1,6 @@
 # Cloud Array
 
-`cloud-array` is an open-source Python library for storing and streaming large Numpy Arrays on local file systems and major cloud proviers CDNs.
+`cloud-array` is an open-source Python library for storing and streaming large Numpy Arrays on local file systems and major cloud providers CDNs. It automatically chunks a large array of data into arbitrary chunks sizes and uploads them into the targeted direcotry.
  
  ```python
 import numpy as np

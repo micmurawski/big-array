@@ -47,7 +47,11 @@ class Chunk:
 
 
 class CloudArray:
-    def __init__(self, chunk_shape: Tuple[int], array: np.ndarray = None, shape: Tuple[int] = None, dtype=None, url: AnyStr = None, config={}):
+    def __init__(
+        self, chunk_shape: Tuple[int], array: np.ndarray = None,
+        shape: Tuple[int] = None, dtype=None, url: AnyStr = None, config={},
+        backend: Backend = None
+    ):
         self.chunk_shape = chunk_shape
         self.url = url
         self.array = array
@@ -62,7 +66,8 @@ class CloudArray:
             self.shape,
             self.chunk_shape
         )
-        self.backend = get_backend(url, config)
+        self.backend = backend(
+            url, config) if backend else get_backend(url, config)
 
     @property
     def shape(self):
