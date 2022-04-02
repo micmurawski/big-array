@@ -1,11 +1,11 @@
 from itertools import product
-from typing import AnyStr, Dict, Tuple
+from typing import AnyStr, Dict, List, Tuple
 
 import numpy as np
 
 from cloud_array.backends import Backend, get_backend
-from cloud_array.utils import (
-    chunk2list, compute_key, is_in, merge_datasets, sort_chunks)
+from cloud_array.utils import (chunk2list, compute_key, is_in, merge_datasets,
+                               sort_chunks)
 
 
 class CloudArrayException(Exception):
@@ -114,41 +114,37 @@ class CloudArray:
 
         return result
 
-    def generate_chunks_slices(self):
+    def generate_chunks_slices(self) -> Tuple[slice]:
         _ranges = (
             range(0, a, c)
             for c, a in zip(self.chunk_shape, self.shape)
         )
         p = product(*_ranges)
         for i in p:
-            _s = []
-            for j in range(len(self.shape)):
-                _s.append(
-                    slice(
-                        i[j],
-                        self.shape[j] if i[j]+self.chunk_shape[j]
-                        > self.shape[j] else i[j]+self.chunk_shape[j]
-                    )
+            yield tuple(
+                slice(
+                    i[j],
+                    self.shape[j] if i[j]+self.chunk_shape[j]
+                    > self.shape[j] else i[j]+self.chunk_shape[j]
                 )
+                for j in range(len(self.shape))
+            )
 
-            yield tuple(_s)
-
-    def get_chunk_slice_by_number(self, number: int):
+    def get_chunk_slice_by_number(self, number: int) -> Tuple[slice]:
         _ranges = (range(0, a, c)
                    for c, a in zip(self.chunk_shape, self.shape))
         p = product(*_ranges)
         val = None
         for _ in range(number+1):
             val = next(p)
-        _s = []
-        for j in range(len(self.shape)):
-            _s.append(
-                slice(
-                    val[j],
-                    self.shape[j] if val[j]+self.chunk_shape[j]
-                    > self.shape[j] else val[j]+self.chunk_shape[j])
+        return tuple(
+            slice(
+                val[j],
+                self.shape[j] if val[j]+self.chunk_shape[j]
+                > self.shape[j] else val[j]+self.chunk_shape[j]
             )
-        return tuple(_s)
+            for j in range(len(self.shape))
+        )
 
     @staticmethod
     def count_number_of_chunks(shape: Tuple[int], chunk_shape: Tuple[int]) -> int:
@@ -179,7 +175,7 @@ class CloudArray:
         for chunk in self.chunks():
             chunk.save(array[chunk.slice])
 
-    def initial_merge_of_chunks(self, sorted_chunks):
+    def initial_merge_of_chunks(self, sorted_chunks) -> List[Tuple[np.ndarray, Tuple[slice]]]:
         datasets = []
         for x in sorted_chunks:
             data = None
@@ -198,17 +194,17 @@ class CloudArray:
         return datasets
 
     def __getitem__(self, key) -> np.ndarray:
-        key = list(key)
-        for i in range(len(key)):
-            key[i] = slice(
+        key = tuple(
+            slice(
                 key[i].start if key[i].start else 0,
                 key[i].stop if key[i].stop else self.shape[i],
                 key[i].step if key[i].step else 1
             )
-        chunks = []
-        for i, s in enumerate(self.generate_chunks_slices()):
-            if is_in(s, key):
-                chunks.append((i, s))
+            for i in range(len(key))
+        )
+        chunks = [
+            (i, s) for i, s in enumerate(self.generate_chunks_slices()) if is_in(s, key)
+        ]
 
         if len(chunks) == 1:
             new_key = compute_key(key, chunks[0][1])

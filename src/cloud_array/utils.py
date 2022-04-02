@@ -12,13 +12,11 @@ def list2chunk(_list: List[List[int]]) -> Tuple[slice]:
 
 
 def is_in(a, b):
-    conditions = []
-    for i, j in zip(a, b):
-        conditions.append(
-            (i.start > j.start and i.start < j.stop) or (
-                i.stop > j.start and i.stop < j.stop)
-        )
-    return all(conditions)
+    return all(
+        (i.start > j.start and i.start < j.stop) or (
+            i.stop > j.start and i.stop < j.stop)
+        for i, j in zip(a, b)
+    )
 
 
 def varing_dim(a: List[int], b: List[int]):
@@ -27,7 +25,7 @@ def varing_dim(a: List[int], b: List[int]):
             return i
 
 
-def sort_chunks(chunks):
+def sort_chunks(chunks) -> List[List]:
     sorting = []
     val = None
     val2 = 1
@@ -75,7 +73,7 @@ def sort_chunks(chunks):
     return sorting
 
 
-def merge_datasets(datasets):
+def merge_datasets(datasets) -> List[Tuple[np.ndarray, slice]]:
     dim1 = None
     result = []
     data = None
@@ -107,14 +105,11 @@ def merge_datasets(datasets):
     return result
 
 
-def compute_key(a, b, shape=(0,0,0)):
-    result = []
-    for i, j, k in zip(a, b, shape):
-        result.append(
-            slice(
-                i.start-j.start,
-                k-abs(i.stop-j.stop),
-                j.step
-            )
-        )
-    return tuple(result)
+def compute_key(a, b, shape=(0, 0, 0)) -> Tuple[slice]:
+    return tuple(
+        slice(
+            i.start-j.start,
+            k-abs(i.stop-j.stop),
+            j.step
+        ) for i, j, k in zip(a, b, shape)
+    )

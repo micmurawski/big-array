@@ -1,6 +1,6 @@
+import io
 import json
 import os
-import io
 import pickle
 from abc import ABCMeta, abstractmethod
 from typing import AnyStr, Dict, Tuple
