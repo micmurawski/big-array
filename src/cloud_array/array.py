@@ -23,7 +23,7 @@ class Chunk:
 
     @property
     def shape(self):
-        return tuple(s.stop-s.start for s in self.slice)
+        return tuple((s.stop-s.start)//(self.slice.step or 1) for s in self.slice)
 
     @shape.setter
     def shape(self, _):
@@ -37,11 +37,11 @@ class Chunk:
     def slice(self, _):
         raise CloudArrayException("Cannot change value of slice")
 
-    def save(self, data: np.array) -> None:
+    def save(self, data: np.ndarray) -> None:
         return self.backend.save_chunk(self.chunk_number, data)
 
-    def __getitem__(self, key: Tuple) -> np.array:
-        return self.backend.read_chunk(self.chunk_number, self.dtype, self.shape).__getitem__(key)
+    def __getitem__(self, key: Tuple) -> np.ndarray:
+        return self.backend.read_chunk(self.chunk_number).__getitem__(key)
 
 
 class CloudArray:
@@ -169,7 +169,7 @@ class CloudArray:
             chunk = self.get_chunk(i)
             chunk.save(array[chunk.slice])
 
-    def __getitem__(self, key) -> np.array:
+    def __getitem__(self, key) -> np.ndarray:
         key = list(key)
         for i in range(len(key)):
             key[i] = slice(
