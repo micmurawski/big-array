@@ -15,8 +15,8 @@ def is_in(a, b):
     conditions = []
     for i, j in zip(a, b):
         conditions.append(
-            (i.start >= j.start and i.start < j.stop) or (
-                i.stop >= j.start and i.stop < j.stop)
+            (i.start > j.start and i.start < j.stop) or (
+                i.stop > j.start and i.stop < j.stop)
         )
     return all(conditions)
 
@@ -69,26 +69,10 @@ def sort_chunks(chunks):
             sorting[-1][0].append(
                 chunks[i+1][0]
             )
+            ss = tuple(x[0] if x[0] == x[1] else slice(x[0].start, x[1].stop)
+                       for x in zip(sorting[-1][2], chunks[i+1][1]))
+            sorting[-1][2] = ss
     return sorting
-
-
-def initial_merge_of_chunks(self, sorted_chunks):
-    datasets = []
-    for x in sorted_chunks:
-        data = None
-        for i in x[0]:
-            chunk_data = self.get_chunk(i)[:, :, :]
-            if data is None:
-                data = chunk_data
-            else:
-                data = np.concatenate(
-                    (data, chunk_data),
-                    axis=x[1]
-                )
-        datasets.append(
-            (data, x[2])
-        )
-    return datasets
 
 
 def merge_datasets(datasets):
@@ -123,13 +107,14 @@ def merge_datasets(datasets):
     return result
 
 
-def compute_key(a, b):
+def compute_key(a, b, shape=(0,0,0)):
     result = []
-    for i, j in zip(a, b):
+    for i, j, k in zip(a, b, shape):
         result.append(
             slice(
-                j.start + (i.start-j.start),
-                j.stop + (i.stop - j.stop)
+                i.start-j.start,
+                k-abs(i.stop-j.stop),
+                j.step
             )
         )
     return tuple(result)

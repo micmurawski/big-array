@@ -4,8 +4,8 @@ from typing import AnyStr, Dict, Tuple
 import numpy as np
 
 from cloud_array.backends import Backend, get_backend
-from cloud_array.utils import (chunk2list, compute_key, initial_merge_of_chunks,
-                               is_in, merge_datasets, sort_chunks)
+from cloud_array.utils import (
+    chunk2list, compute_key, is_in, merge_datasets, sort_chunks)
 
 
 class CloudArrayException(Exception):
@@ -179,6 +179,24 @@ class CloudArray:
         for chunk in self.chunks():
             chunk.save(array[chunk.slice])
 
+    def initial_merge_of_chunks(self, sorted_chunks):
+        datasets = []
+        for x in sorted_chunks:
+            data = None
+            for i in x[0]:
+                chunk_data = self.get_chunk(i)[:, :, :]
+                if data is None:
+                    data = chunk_data
+                else:
+                    data = np.concatenate(
+                        (data, chunk_data),
+                        axis=x[1]
+                    )
+            datasets.append(
+                (data, x[2])
+            )
+        return datasets
+
     def __getitem__(self, key) -> np.ndarray:
         key = list(key)
         for i in range(len(key)):
@@ -196,10 +214,10 @@ class CloudArray:
             new_key = compute_key(key, chunks[0][1])
             return self.get_chunk(chunks[0]).__getitem__(new_key)
         sorted_chunks = sort_chunks(chunks)
-        datasets = initial_merge_of_chunks(self, sorted_chunks)
+        datasets = self.initial_merge_of_chunks(sorted_chunks)
         datasets = merge_datasets(datasets)
         while len(datasets) > 1:
             datasets = merge_datasets(datasets)
 
-        new_key = compute_key(key, datasets[0][1])
+        new_key = compute_key(key, datasets[0][1], datasets[0][0].shape)
         return datasets[0][0].__getitem__(new_key)
