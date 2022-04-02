@@ -1,4 +1,3 @@
-import os
 from itertools import product
 from typing import AnyStr, Dict, Tuple
 
@@ -175,17 +174,21 @@ class CloudArray:
             key[i] = slice(
                 key[i].start if key[i].start else 0,
                 key[i].stop if key[i].stop else self.shape[i],
-                None
+                key[i].step if key[i].step else 1
             )
         chunks = []
         for i, s in enumerate(self.generate_chunks_slices()):
             if is_in(s, key):
                 chunks.append((i, s))
 
+        if len(chunks) ==1:
+            new_key = compute_key(key, chunks[0][1])
+            return self.get_chunk(chunks[0]).__getitem__(new_key)
         sorted_chunks = sort_chunks(chunks)
         datasets = initial_merge_of_chunks(self, sorted_chunks)
         datasets = merge_datasets(datasets)
+        while len(datasets) > 1:
+            datasets = merge_datasets(datasets)
 
-        if len(datasets) == 1:
-            new_key = compute_key(key, datasets[0][1])
-            return datasets[0][0].__getitem__(new_key)
+        new_key = compute_key(key, datasets[0][1])
+        return datasets[0][0].__getitem__(new_key)
