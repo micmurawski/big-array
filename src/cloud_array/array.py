@@ -42,9 +42,12 @@ class Chunk:
     def __getitem__(self, key: Tuple) -> np.ndarray:
         return self.backend.read_chunk(self.chunk_number).__getitem__(key)
 
+    def __setitem__(self, key: Tuple, data: np.ndarray) -> None:
+        self.backend.setitem_chunk(self.chunk_number, key, data)
+
 
 class CloudArray:
-    def __init__(self, chunk_shape, array=None, shape=None, dtype=None, url=None, config={}):
+    def __init__(self, chunk_shape: Tuple[int], array: np.ndarray = None, shape: Tuple[int] = None, dtype=None, url: AnyStr = None, config={}):
         self.chunk_shape = chunk_shape
         self.url = url
         self.array = array
@@ -125,7 +128,7 @@ class CloudArray:
 
             yield tuple(_s)
 
-    def get_chunk_slice_by_number(self, number):
+    def get_chunk_slice_by_number(self, number: int):
         _ranges = (range(0, a, c)
                    for c, a in zip(self.chunk_shape, self.shape))
         p = product(*_ranges)
@@ -143,7 +146,7 @@ class CloudArray:
         return tuple(_s)
 
     @staticmethod
-    def count_number_of_chunks(shape, chunk_shape):
+    def count_number_of_chunks(shape: Tuple[int], chunk_shape: Tuple[int]) -> int:
         x = [round(shape[i]/chunk_shape[i]) for i in range(len(shape))]
         r = 1
         for i in x:
@@ -151,21 +154,24 @@ class CloudArray:
                 r *= i
         return r
 
-    def get_chunk(self, chunk_number: int):
+    def get_chunk(self, chunk_number: int) -> Chunk:
         chunk_slice = self.get_chunk_slice_by_number(chunk_number)
         return Chunk(
             chunk_number=chunk_number, url=self.url, chunk_slice=chunk_slice,
             dtype=self.dtype, backend=self.backend
         )
 
-    def save(self, array=None):
+    def chunks(self) -> Chunk:
+        for i in range(self.chunks_number):
+            yield self.get_chunk(i)
+
+    def save(self, array=None) -> None:
         if array is None and self.array is None:
             raise CloudArrayException("Array is not declared.")
         array = array or self.array
         metadata = self.get_metadata()
         self.backend.save_metadata(metadata)
-        for i in range(self.chunks_number):
-            chunk = self.get_chunk(i)
+        for chunk in self.chunks():
             chunk.save(array[chunk.slice])
 
     def __getitem__(self, key) -> np.ndarray:
@@ -181,7 +187,7 @@ class CloudArray:
             if is_in(s, key):
                 chunks.append((i, s))
 
-        if len(chunks) ==1:
+        if len(chunks) == 1:
             new_key = compute_key(key, chunks[0][1])
             return self.get_chunk(chunks[0]).__getitem__(new_key)
         sorted_chunks = sort_chunks(chunks)

@@ -3,7 +3,7 @@ import os
 import io
 import pickle
 from abc import ABCMeta, abstractmethod
-from typing import AnyStr, Dict
+from typing import AnyStr, Dict, Tuple
 
 import numpy as np
 
@@ -16,6 +16,11 @@ class Backend(metaclass=ABCMeta):
     @abstractmethod
     def save_chunk(self, number: int, chunk: np.ndarray) -> None:
         pass
+
+    def setitem_chunk(self, number: int, key: Tuple, chunk: np.ndarray) -> None:
+        data = self.read_chunk(number)
+        data.__setitem__(key, chunk)
+        self.save_chunk(number, data)
 
     @abstractmethod
     def save_metadata(self, metadata: Dict) -> None:
@@ -40,6 +45,11 @@ class LocalSystemBackend(Backend):
     def save_metadata(self, metadata: Dict) -> None:
         with open(os.path.join(self.path, "metadata.json"), "w") as f:
             f.write(json.dumps(metadata))
+
+    def setitem_chunk(self, number: int, key: Tuple, chunk: np.ndarray) -> None:
+        data = self.read_chunk(number)
+        data.__setitem__(key, chunk)
+        self.save_chunk(number, data)
 
     def read_chunk(self, number: int) -> np.ndarray:
         return np.load(
