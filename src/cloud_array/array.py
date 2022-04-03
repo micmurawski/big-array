@@ -1,4 +1,5 @@
 from itertools import product
+from math import ceil
 from typing import AnyStr, Dict, List, Tuple
 
 import numpy as np
@@ -148,7 +149,7 @@ class CloudArray:
 
     @staticmethod
     def count_number_of_chunks(shape: Tuple[int], chunk_shape: Tuple[int]) -> int:
-        x = [round(shape[i]/chunk_shape[i]) for i in range(len(shape))]
+        x = [ceil(shape[i]/chunk_shape[i]) for i in range(len(shape))]
         r = 1
         for i in x:
             if i != 0:
@@ -205,7 +206,6 @@ class CloudArray:
         chunks = [
             (i, s) for i, s in enumerate(self.generate_chunks_slices()) if is_in(s, key)
         ]
-
         if len(chunks) == 1:
             new_key = compute_key(key, chunks[0][1])
             return self.get_chunk(chunks[0][0]).__getitem__(new_key)
