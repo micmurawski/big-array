@@ -73,8 +73,11 @@ class S3Backend(Backend):
         self.client = boto3.client("s3", **config)
 
     def save_chunk(self, number: int, chunk: np.ndarray) -> None:
-        path = os.path.join(self.path, str(number),
-                            str(number)).replace("s3://", "")
+        path = os.path.join(
+            self.path,
+            str(number),
+            str(number)
+        ).replace("s3://", "")
         bucket_name, key = path.split("/", 1)
         bytes_ = io.BytesIO()
         np.save(bytes_, chunk, allow_pickle=True)

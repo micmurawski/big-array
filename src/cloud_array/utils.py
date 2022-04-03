@@ -11,12 +11,15 @@ def list2chunk(_list: List[List[int]]) -> Tuple[slice]:
     return tuple([slice(*l) for l in _list])
 
 
-def is_in(a, b):
-    return all(
-        (i.start > j.start and i.start < j.stop) or (
-            i.stop > j.start and i.stop < j.stop)
-        for i, j in zip(a, b)
-    )
+def is_in(s, key):
+    conditions = []
+    for i, j in zip(s, key):
+        conditions.append(
+            (i.start < j.stop and i.start >= j.start) or (i.stop < j.stop and i.stop >= j.start) or
+            (j.start < i.stop and j.start >= i.start) or (
+                j.stop < i.stop and j.stop >= i.start)
+        )
+    return all(conditions)
 
 
 def varing_dim(a: List[int], b: List[int]):
@@ -108,8 +111,8 @@ def merge_datasets(datasets) -> List[Tuple[np.ndarray, slice]]:
 def compute_key(a, b, shape=(0, 0, 0)) -> Tuple[slice]:
     return tuple(
         slice(
-            i.start-j.start,
+            i.start,
             k-abs(i.stop-j.stop),
-            j.step
+            i.step
         ) for i, j, k in zip(a, b, shape)
     )

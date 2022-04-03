@@ -208,12 +208,11 @@ class CloudArray:
 
         if len(chunks) == 1:
             new_key = compute_key(key, chunks[0][1])
-            return self.get_chunk(chunks[0]).__getitem__(new_key)
+            return self.get_chunk(chunks[0][0]).__getitem__(new_key)
         sorted_chunks = sort_chunks(chunks)
         datasets = self.initial_merge_of_chunks(sorted_chunks)
         datasets = merge_datasets(datasets)
         while len(datasets) > 1:
             datasets = merge_datasets(datasets)
-
         new_key = compute_key(key, datasets[0][1], datasets[0][0].shape)
         return datasets[0][0].__getitem__(new_key)
