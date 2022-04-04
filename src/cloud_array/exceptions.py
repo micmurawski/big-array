@@ -1,0 +1,2 @@
+class CloudArrayException(Exception):
+    pass

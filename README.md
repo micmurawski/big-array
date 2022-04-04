@@ -17,11 +17,11 @@ f = np.memmap(
 )
 
 array = CloudArray(
-    shape=shape,
     chunk_shape=chunk_shape,
+    array=f,
     url="s3://example_bucket/dataset0"
 )
-array.save(f)
+array.save()
 print(array[:100,:100,:100])
 
  ```

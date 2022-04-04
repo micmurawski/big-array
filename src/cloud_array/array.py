@@ -5,12 +5,9 @@ from typing import AnyStr, Dict, List, Tuple
 import numpy as np
 
 from cloud_array.backends import Backend, get_backend
+from cloud_array.exceptions import CloudArrayException
 from cloud_array.utils import (chunk2list, compute_key, is_in, merge_datasets,
                                sort_chunks)
-
-
-class CloudArrayException(Exception):
-    pass
 
 
 class Chunk:
@@ -149,11 +146,11 @@ class CloudArray:
 
     @staticmethod
     def count_number_of_chunks(shape: Tuple[int], chunk_shape: Tuple[int]) -> int:
-        x = [ceil(shape[i]/chunk_shape[i]) for i in range(len(shape))]
         r = 1
-        for i in x:
-            if i != 0:
-                r *= i
+        for i in range(len(shape)):
+            v = ceil(shape[i]/chunk_shape[i])
+            if v > 0:
+                r *= v
         return r
 
     def get_chunk(self, chunk_number: int) -> Chunk:
@@ -194,15 +191,41 @@ class CloudArray:
             )
         return datasets
 
+    def parse_key(self, key: Tuple[slice]):
+        result = []
+        for i in range(len(key)):
+            val = key[i]
+            if isinstance(val, int):
+                if val < 0:
+                    val = self.shape[i] + val
+                result.append(
+                    slice(val, val+1)
+                )
+            else:
+                start = val.start or 0
+                stop = val.stop or self.shape[i]
+                if start > self.shape[i] or stop > self.shape[i]:
+                    raise CloudArrayException(
+                        f"Slice {key[i]} does not fit shape: {self.shape}.")
+                if start >= stop:
+                    raise CloudArrayException(
+                        f"Key invalid slice {key[i]}. Start >= stop.")
+                if start < 0:
+                    start = self.shape[i] + start
+                if stop < 0:
+                    stop = self.shape[i] + stop
+
+                result.append(
+                    slice(
+                        start,
+                        stop,
+                        val.step if val.step else 1
+                    )
+                )
+        return tuple(result)
+
     def __getitem__(self, key) -> np.ndarray:
-        key = tuple(
-            slice(
-                key[i].start if key[i].start else 0,
-                key[i].stop if key[i].stop else self.shape[i],
-                key[i].step if key[i].step else 1
-            )
-            for i in range(len(key))
-        )
+        key = self.parse_key(key)
         chunks = [
             (i, s) for i, s in enumerate(self.generate_chunks_slices()) if is_in(s, key)
         ]

@@ -53,16 +53,14 @@ def sort_chunks(chunks) -> List[List]:
             sorting[-1][0].append(
                 chunks[i][0]
             )
-            ss = tuple(x[0] if x[0] == x[1] else slice(x[0].start, x[1].stop)
-                       for x in zip(sorting[-1][2], chunks[i+1][1]))
-            sorting[-1][2] = ss
+            sorting[-1][2] = tuple(x[0] if x[0] == x[1] else slice(x[0].start, x[1].stop)
+                                   for x in zip(sorting[-1][2], chunks[i+1][1]))
         else:
             sorting[-1][0].append(
                 chunks[i][0]
             )
-            ss = tuple(x[0] if x[0] == x[1] else slice(x[0].start, x[1].stop)
-                       for x in zip(sorting[-1][2], chunks[i][1]))
-            sorting[-1][2] = ss
+            sorting[-1][2] = tuple(x[0] if x[0] == x[1] else slice(x[0].start, x[1].stop)
+                                   for x in zip(sorting[-1][2], chunks[i][1]))
             val = None
             val2 = 0
 
@@ -70,9 +68,8 @@ def sort_chunks(chunks) -> List[List]:
             sorting[-1][0].append(
                 chunks[i+1][0]
             )
-            ss = tuple(x[0] if x[0] == x[1] else slice(x[0].start, x[1].stop)
-                       for x in zip(sorting[-1][2], chunks[i+1][1]))
-            sorting[-1][2] = ss
+            sorting[-1][2] = tuple(x[0] if x[0] == x[1] else slice(x[0].start, x[1].stop)
+                                   for x in zip(sorting[-1][2], chunks[i+1][1]))
     return sorting
 
 

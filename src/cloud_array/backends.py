@@ -82,7 +82,7 @@ class S3Backend(Backend):
         bytes_ = io.BytesIO()
         np.save(bytes_, chunk, allow_pickle=True)
         bytes_.seek(0)
-        self.client.upload_fileobj(
+        response = self.client.upload_fileobj(
             Fileobj=bytes_,
             Bucket=bucket_name,
             Key=key
@@ -111,9 +111,12 @@ class S3Backend(Backend):
         return json.loads(content.read())
 
     def get_object(self, key: AnyStr):
-        path = os.path.join(self.path.replace("s3://", ""), key)
-        bucket_name, _key = path.split("/", 1)
-        return self.client.get_object(Bucket=bucket_name, Key=_key)
+        try:
+            path = os.path.join(self.path.replace("s3://", ""), key)
+            bucket_name, _key = path.split("/", 1)
+            return self.client.get_object(Bucket=bucket_name, Key=_key)
+        except Exception as e:
+            raise Exception(bucket_name,_key) from e
 
 
 BACKENDS = {
