@@ -8,7 +8,7 @@ def chunk2list(chunk: Tuple[slice]) -> List[List[int]]:
 
 
 def list2chunk(_list: List[List[int]]) -> Tuple[slice]:
-    return tuple([slice(*l) for l in _list])
+    return tuple([slice(*el) for el in _list])
 
 
 def is_in(s, key):

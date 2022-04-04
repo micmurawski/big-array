@@ -1,1 +1,1 @@
-from .array import CloudArray
+from .array import CloudArray  # NOQA

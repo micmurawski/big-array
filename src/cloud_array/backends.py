@@ -1,7 +1,6 @@
 import io
 import json
 import os
-import pickle
 from abc import ABCMeta, abstractmethod
 from typing import AnyStr, Dict, Tuple
 
@@ -76,24 +75,25 @@ class S3Backend(Backend):
         path = os.path.join(
             self.path,
             str(number),
-            str(number)
+            str(number)+".npy"
         ).replace("s3://", "")
         bucket_name, key = path.split("/", 1)
         bytes_ = io.BytesIO()
         np.save(bytes_, chunk, allow_pickle=True)
         bytes_.seek(0)
-        response = self.client.upload_fileobj(
+        self.client.upload_fileobj(
             Fileobj=bytes_,
             Bucket=bucket_name,
             Key=key
         )
 
     def save_metadata(self, metadata: Dict) -> None:
-        data = pickle.dumps(metadata)
+        data = json.dumps(metadata)
         path = self.path.replace("s3://", "")
         bucket_name, key = path.split("/", 1)
-        key = os.path.join("metadata.json")
-        self.client.put_object(Bucket=bucket_name, Key=key, Body=data)
+        key = os.path.join(key, "metadata.json")
+        self.client.put_object(
+            Bucket=bucket_name, Key=key, Body=data)
 
     def read_chunk(self, number: int) -> np.ndarray:
         content = self.get_object(
@@ -102,12 +102,12 @@ class S3Backend(Backend):
                 str(number)+".npy"
             )
         )
-        with io.BytesIO(content.get()["Body"].read()) as f:
+        with io.BytesIO(content["Body"].read()) as f:
             f.seek(0)
             return np.load(f)
 
     def read_metadata(self) -> Dict:
-        content = self.get_object("metadata.json")
+        content = self.get_object("metadata.json")['Body']
         return json.loads(content.read())
 
     def get_object(self, key: AnyStr):
@@ -116,7 +116,7 @@ class S3Backend(Backend):
             bucket_name, _key = path.split("/", 1)
             return self.client.get_object(Bucket=bucket_name, Key=_key)
         except Exception as e:
-            raise Exception(bucket_name,_key) from e
+            raise Exception(bucket_name, _key) from e
 
 
 BACKENDS = {

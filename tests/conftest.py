@@ -17,7 +17,6 @@ def lfs_array(test_data):
     with tempfile.TemporaryDirectory() as file:
         chunk_shape = (16, 16, 16)
         array = CloudArray(
-            shape=chunk_shape,
             chunk_shape=chunk_shape,
             url=file,
             array=test_data
