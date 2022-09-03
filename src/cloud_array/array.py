@@ -6,8 +6,7 @@ import numpy as np
 
 from cloud_array.backends import Backend, get_backend
 from cloud_array.exceptions import CloudArrayException
-from cloud_array.utils import (chunk2list, compute_key, is_in, merge_datasets,
-                               sort_chunks)
+from cloud_array.utils import chunk2list, compute_key, get_index_of_iter_product, is_in, merge_datasets, sort_chunks
 
 
 class Chunk:
@@ -129,12 +128,8 @@ class CloudArray:
             )
 
     def get_chunk_slice_by_number(self, number: int) -> Tuple[slice]:
-        _ranges = (range(0, a, c)
-                   for c, a in zip(self.chunk_shape, self.shape))
-        p = product(*_ranges)
-        val = None
-        for _ in range(number+1):
-            val = next(p)
+        p = tuple((0, a, c) for c, a in zip(self.chunk_shape, self.shape))
+        val = get_index_of_iter_product(number, p)
         return tuple(
             slice(
                 val[j],

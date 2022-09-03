@@ -17,7 +17,7 @@ def get_dependencies(subpackage="requirements"):
 
 setup(
     name='cloud_array',
-    version='0.0.1',
+    version='0.0.2',
     author="Michal Murawski",
     author_email="mmurawski777@gmail.com",
     description="Cloud implementation of array for Big Data",

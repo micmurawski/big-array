@@ -1,6 +1,30 @@
-from typing import List, Tuple
+import operator
+from functools import reduce
+from math import ceil
+from typing import List, Sequence, Tuple
 
 import numpy as np
+
+
+def get_index_of_iter_product(n: int, p: Sequence[Tuple[int]]) -> Tuple[int]:
+    """
+    This function computes value of product of ranges for given n.
+    The p is a sequence of range arguments start, stop, step.
+    """
+    _p = [ceil((stop-start)/step) for start, stop, step in p]
+    rest = n
+    result = []
+
+    for i in range(len(_p)):
+        v = reduce(operator.mul, _p, 1)
+
+        while v > rest:
+            _p[0] -= 1
+            v = reduce(operator.mul, _p, 1)
+
+        result.append((_p.pop(0)+p[i][0])*p[i][2])
+        rest -= v
+    return tuple(result)
 
 
 def chunk2list(chunk: Tuple[slice]) -> List[List[int]]:
