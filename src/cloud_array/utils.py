@@ -6,25 +6,42 @@ from typing import List, Sequence, Tuple
 import numpy as np
 
 
+def compute_number_of_chunks(shape: Tuple[int], chunk_shape: Tuple[int]) -> int:
+    """
+    This function computes number of chunks required to fit given shape of array and shape of chunk.
+    The shape is shape of whole array and chunk_shape is chunk shape.
+    """
+    return reduce(operator.mul, map(lambda x: ceil(x[0]/x[1]) or 1, zip(shape, chunk_shape)), 1)
+
+
 def get_index_of_iter_product(n: int, p: Sequence[Tuple[int]]) -> Tuple[int]:
     """
     This function computes value of product of ranges for given n.
     The p is a sequence of range arguments start, stop, step.
     """
     _p = [ceil((stop-start)/step) for start, stop, step in p]
-    rest = n
     result = []
+    for i in range(len(_p)-1, 0, -1):
+        r = n % _p[i]
+        result.append(r)
+        n = (n-r)//_p[i]
+    result.append(n)
+    return tuple(result[::-1])
 
-    for i in range(len(_p)):
-        v = reduce(operator.mul, _p, 1)
 
-        while v > rest:
-            _p[0] -= 1
-            v = reduce(operator.mul, _p, 1)
-
-        result.append((_p.pop(0)+p[i][0])*p[i][2])
-        rest -= v
-    return tuple(result)
+def get_index_of_iter_product(n: int, p: Sequence[Tuple[int]]) -> Tuple[int]:
+    """
+    This function computes value of product of ranges for given n.
+    The p is a sequence of range arguments start, stop, step.
+    """
+    _p = [ceil((stop-start)/step) for start, stop, step in p]
+    result = []
+    for i in range(len(_p)-1, 0, -1):
+        r = n % _p[i]
+        result.append((r+p[i][0])*p[i][2])
+        n = (n-r)//_p[i]
+    result.append((n+p[0][0])*p[0][2])
+    return tuple(result[::-1])
 
 
 def chunk2list(chunk: Tuple[slice]) -> List[List[int]]:
