@@ -1,12 +1,12 @@
 from itertools import product
-from math import ceil
 from typing import AnyStr, Dict, List, Tuple
 
 import numpy as np
 
 from cloud_array.backends import Backend, get_backend
 from cloud_array.exceptions import CloudArrayException
-from cloud_array.utils import chunk2list, compute_key, get_index_of_iter_product, is_in, merge_datasets, sort_chunks
+from cloud_array.utils import (chunk2list, compute_key, compute_number_of_chunks, get_index_of_iter_product, is_in,
+                               merge_datasets, sort_chunks)
 
 
 class Chunk:
@@ -141,12 +141,7 @@ class CloudArray:
 
     @staticmethod
     def count_number_of_chunks(shape: Tuple[int], chunk_shape: Tuple[int]) -> int:
-        r = 1
-        for i in range(len(shape)):
-            v = ceil(shape[i]/chunk_shape[i])
-            if v > 0:
-                r *= v
-        return r
+        return compute_number_of_chunks(shape, chunk_shape)
 
     def get_chunk(self, chunk_number: int) -> Chunk:
         chunk_slice = self.get_chunk_slice_by_number(chunk_number)

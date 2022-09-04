@@ -17,7 +17,7 @@ def get_dependencies(subpackage="requirements"):
 
 setup(
     name='cloud_array',
-    version='0.0.2',
+    version='0.0.3',
     author="Michal Murawski",
     author_email="mmurawski777@gmail.com",
     description="Cloud implementation of array for Big Data",
@@ -25,10 +25,13 @@ setup(
     long_description_content_type="text/markdown",
     url="https://github.com/micmurawski/cloud-array/",
     package_dir={"": "src"},
-    packages=find_packages(exclude=(
-        'build',
-        'tests',
-    )),
+    packages=find_packages(
+        where="src",
+        exclude=(
+            'build',
+            'tests',
+        )
+    ),
     install_requires=get_dependencies(),
     extras_requires={
         "": get_dependencies(),
