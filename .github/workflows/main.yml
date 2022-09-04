@@ -13,7 +13,7 @@ jobs:
       - name: Install dependencies
         run: python3 -m pip install -e . && python3 -m pip install -r dev-requirements.txt
       - name: Run tests
-        run: python3 -m pytest tests
+        run: python3 -m pytest src/tests
   publish:
     name: "Publish in PyPi"
     runs-on: ubuntu-latest
