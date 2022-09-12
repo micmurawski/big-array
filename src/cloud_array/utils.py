@@ -23,21 +23,6 @@ def get_index_of_iter_product(n: int, p: Sequence[Tuple[int]]) -> Tuple[int]:
     result = []
     for i in range(len(_p)-1, 0, -1):
         r = n % _p[i]
-        result.append(r)
-        n = (n-r)//_p[i]
-    result.append(n)
-    return tuple(result[::-1])
-
-
-def get_index_of_iter_product(n: int, p: Sequence[Tuple[int]]) -> Tuple[int]:
-    """
-    This function computes value of product of ranges for given n.
-    The p is a sequence of range arguments start, stop, step.
-    """
-    _p = [ceil((stop-start)/step) for start, stop, step in p]
-    result = []
-    for i in range(len(_p)-1, 0, -1):
-        r = n % _p[i]
         result.append((r+p[i][0])*p[i][2])
         n = (n-r)//_p[i]
     result.append((n+p[0][0])*p[0][2])
