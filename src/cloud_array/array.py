@@ -1,4 +1,5 @@
 from itertools import product
+from tkinter import E
 from typing import AnyStr, Dict, List, Tuple
 
 import numpy as np
@@ -121,8 +122,7 @@ class CloudArray:
             yield tuple(
                 slice(
                     i[j],
-                    self.shape[j] if i[j]+self.chunk_shape[j]
-                    > self.shape[j] else i[j]+self.chunk_shape[j]
+                    min(self.shape[j], i[j]+self.chunk_shape[j])
                 )
                 for j in range(len(self.shape))
             )
@@ -133,8 +133,7 @@ class CloudArray:
         return tuple(
             slice(
                 val[j],
-                self.shape[j] if val[j]+self.chunk_shape[j]
-                > self.shape[j] else val[j]+self.chunk_shape[j]
+                min(self.shape[j], val[j]+self.chunk_shape[j])
             )
             for j in range(len(self.shape))
         )
@@ -197,9 +196,9 @@ class CloudArray:
                 if start > self.shape[i] or stop > self.shape[i]:
                     raise CloudArrayException(
                         f"Slice {key[i]} does not fit shape: {self.shape}.")
-                if start >= stop:
+                if start > stop:
                     raise CloudArrayException(
-                        f"Key invalid slice {key[i]}. Start >= stop.")
+                        f"Key invalid slice {key[i]}. Start > stop.")
                 if start < 0:
                     start = self.shape[i] + start
                 if stop < 0:
@@ -209,16 +208,18 @@ class CloudArray:
                     slice(
                         start,
                         stop,
-                        val.step if val.step else 1
+                        val.step or 1
                     )
                 )
         return tuple(result)
 
     def __getitem__(self, key) -> np.ndarray:
         key = self.parse_key(key)
+        #raise Exception(key)
         chunks = [
             (i, s) for i, s in enumerate(self.generate_chunks_slices()) if is_in(s, key)
         ]
+        #raise Exception([c[0] for c in chunks])
         if len(chunks) == 1:
             new_key = compute_key(key, chunks[0][1])
             return self.get_chunk(chunks[0][0]).__getitem__(new_key)
