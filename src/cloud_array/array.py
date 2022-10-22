@@ -1,12 +1,13 @@
 from itertools import product
+from math import ceil
 from typing import AnyStr, Dict, List, Tuple
 
 import numpy as np
 
 from cloud_array.backends import Backend, get_backend
 from cloud_array.exceptions import CloudArrayException
-from cloud_array.utils import (chunk2list, compute_key, compute_number_of_chunks, get_index_of_iter_product, is_in,
-                               merge_datasets, sort_chunks)
+from cloud_array.utils import (chunk2list, compute_key, compute_number_of_chunks, get_chunk_index,
+                               get_index_of_iter_product, merge_datasets, sort_chunks)
 
 
 class Chunk:
@@ -127,7 +128,7 @@ class CloudArray:
                 for j in range(len(self.shape))
             )
 
-    def get_chunk_slice_by_number(self, number: int) -> Tuple[slice]:
+    def get_chunk_slice_by_index(self, number: int) -> Tuple[slice]:
         p = tuple((0, a, c) for c, a in zip(self.chunk_shape, self.shape))
         val = get_index_of_iter_product(number, p)
         return tuple(
@@ -144,7 +145,7 @@ class CloudArray:
         return compute_number_of_chunks(shape, chunk_shape)
 
     def get_chunk(self, chunk_number: int) -> Chunk:
-        chunk_slice = self.get_chunk_slice_by_number(chunk_number)
+        chunk_slice = self.get_chunk_slice_by_index(chunk_number)
         return Chunk(
             chunk_number=chunk_number, url=self.url, chunk_slice=chunk_slice,
             dtype=self.dtype, backend=self.backend
@@ -181,7 +182,7 @@ class CloudArray:
             )
         return datasets
 
-    def parse_key(self, key: Tuple[slice]):
+    def parse_key_to_slices(self, key: Tuple[slice]):
         result = []
         for i in range(len(key)):
             val = key[i]
@@ -215,17 +216,24 @@ class CloudArray:
         return tuple(result)
 
     def __getitem__(self, key) -> np.ndarray:
-        key = self.parse_key(key)
+        slices = self.parse_key_to_slices(key)
+        _normalized_shape = [ceil(i/j) for i, j in zip(self.shape, self.chunk_shape)]
+        _normalized_ranges = [range(ss.start//c, ss.stop//c + 1, 1) for ss, c in zip(slices, self.chunk_shape)]
+        chunks_indexes_gen = product(*_normalized_ranges)
         chunks = [
-            (i, s) for i, s in enumerate(self.generate_chunks_slices()) if is_in(s, key)
+            (
+                (idx := get_chunk_index(i, _normalized_shape)),
+                self.get_chunk_slice_by_index(idx)
+            )
+            for i in chunks_indexes_gen
         ]
         if len(chunks) == 1:
-            new_key = compute_key(key, chunks[0][1])
+            new_key = compute_key(slices, chunks[0][1])
             return self.get_chunk(chunks[0][0]).__getitem__(new_key)
         sorted_chunks = sort_chunks(chunks)
         datasets = self.initial_merge_of_chunks(sorted_chunks)
         datasets = merge_datasets(datasets)
         while len(datasets) > 1:
             datasets = merge_datasets(datasets)
-        new_key = compute_key(key, datasets[0][1], datasets[0][0].shape)
+        new_key = compute_key(slices, datasets[0][1], datasets[0][0].shape)
         return datasets[0][0].__getitem__(new_key)

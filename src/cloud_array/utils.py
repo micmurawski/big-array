@@ -29,23 +29,23 @@ def get_index_of_iter_product(n: int, p: Sequence[Tuple[int]]) -> Tuple[int]:
     return tuple(result[::-1])
 
 
+def get_chunk_index(normalized_chunk, normalized_shape):
+    """
+    This function computes chunk index based on normalized shape and chunk
+    """
+    coef = normalized_shape[1:] + [1]
+    for i in range(len(coef)):
+        coef[i] = reduce(operator.mul, coef[i:])
+
+    return sum(map(lambda x: x[0] * x[1], zip(normalized_chunk, coef)))
+
+
 def chunk2list(chunk: Tuple[slice]) -> List[List[int]]:
     return [[s.start, s.stop, s.step] for s in chunk]
 
 
 def list2chunk(_list: List[List[int]]) -> Tuple[slice]:
     return tuple([slice(*el) for el in _list])
-
-
-def is_in(s, key):
-    conditions = []
-    for i, j in zip(s, key):
-        conditions.append(
-            (i.start < j.stop and i.start >= j.start) or (i.stop < j.stop and i.stop >= j.start) or
-            (j.start < i.stop and j.start >= i.start) or (
-                j.stop < i.stop and j.stop >= i.start)
-        )
-    return all(conditions)
 
 
 def varing_dim(a: List[int], b: List[int]):
@@ -134,7 +134,7 @@ def merge_datasets(datasets) -> List[Tuple[np.ndarray, slice]]:
 def compute_key(a, b, shape=(0, 0, 0)) -> Tuple[slice]:
     return tuple(
         slice(
-            i.start,
+            min(i.start - j.start, i.start),
             k-abs(i.stop-j.stop),
             i.step
         ) for i, j, k in zip(a, b, shape)
