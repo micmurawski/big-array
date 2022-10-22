@@ -122,8 +122,7 @@ class CloudArray:
             yield tuple(
                 slice(
                     i[j],
-                    self.shape[j] if i[j]+self.chunk_shape[j]
-                    > self.shape[j] else i[j]+self.chunk_shape[j]
+                    min(self.shape[j], i[j]+self.chunk_shape[j])
                 )
                 for j in range(len(self.shape))
             )
@@ -134,8 +133,7 @@ class CloudArray:
         return tuple(
             slice(
                 val[j],
-                self.shape[j] if val[j]+self.chunk_shape[j]
-                > self.shape[j] else val[j]+self.chunk_shape[j]
+                min(self.shape[j], val[j]+self.chunk_shape[j])
             )
             for j in range(len(self.shape))
         )
