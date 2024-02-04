@@ -3,7 +3,7 @@ import pytest
 
 
 @pytest.mark.parametrize("key", [
-    (slice(10, 32), slice(10, 32), slice(10, 32)),
+    (slice(10, 64), slice(17, 52), slice(17, 32)),
     (slice(10, 12), slice(10, 12), slice(10, 12)),
     (slice(None, None), slice(None, None), slice(None, None)),
 ])

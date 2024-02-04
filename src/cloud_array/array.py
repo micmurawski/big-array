@@ -121,20 +121,18 @@ class CloudArray:
             yield tuple(
                 slice(
                     i[j],
-                    self.shape[j] if i[j]+self.chunk_shape[j]
-                    > self.shape[j] else i[j]+self.chunk_shape[j]
+                    min(self.shape[j], i[j]+self.chunk_shape[j])
                 )
                 for j in range(len(self.shape))
             )
 
-    def get_chunk_slice_by_number(self, number: int) -> Tuple[slice]:
+    def get_chunk_slice_by_index(self, number: int) -> Tuple[slice]:
         p = tuple((0, a, c) for c, a in zip(self.chunk_shape, self.shape))
         val = get_index_of_iter_product(number, p)
         return tuple(
             slice(
                 val[j],
-                self.shape[j] if val[j]+self.chunk_shape[j]
-                > self.shape[j] else val[j]+self.chunk_shape[j]
+                min(self.shape[j], val[j]+self.chunk_shape[j])
             )
             for j in range(len(self.shape))
         )
@@ -144,7 +142,7 @@ class CloudArray:
         return compute_number_of_chunks(shape, chunk_shape)
 
     def get_chunk(self, chunk_number: int) -> Chunk:
-        chunk_slice = self.get_chunk_slice_by_number(chunk_number)
+        chunk_slice = self.get_chunk_slice_by_index(chunk_number)
         return Chunk(
             chunk_number=chunk_number, url=self.url, chunk_slice=chunk_slice,
             dtype=self.dtype, backend=self.backend
@@ -181,7 +179,7 @@ class CloudArray:
             )
         return datasets
 
-    def parse_key(self, key: Tuple[slice]):
+    def parse_key_to_slices(self, key: Tuple[slice]):
         result = []
         for i in range(len(key)):
             val = key[i]
