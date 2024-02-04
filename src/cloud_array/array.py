@@ -213,7 +213,7 @@ class CloudArray:
         return tuple(result)
 
     def __getitem__(self, key) -> np.ndarray:
-        new_key = self.parse_key(key)
+        new_key = self.parse_key_to_slices(key)
 
         def _get_chunk_data_by_key(key: Sequence[slice]):
             idx = compute_index_of_slice(key, self.shape, self.chunk_shape)
