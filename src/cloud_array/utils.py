@@ -1,7 +1,8 @@
 import operator
+from copy import copy
 from functools import reduce
 from math import ceil
-from typing import List, Sequence, Tuple
+from typing import Callable, List, Sequence, Tuple
 
 import numpy as np
 
@@ -29,113 +30,54 @@ def get_index_of_iter_product(n: int, p: Sequence[Tuple[int]]) -> Tuple[int]:
     return tuple(result[::-1])
 
 
+def compute_index_of_slice(slice: Sequence[slice], shape: Tuple[int], chunk_shape: Tuple[int]) -> int:
+    m = [1] + [ceil(i/j) for i, j in zip(shape[::-1], chunk_shape[::-1])][:-1]
+    m = [i*j for i, j in zip(m, [1]+m[:-1])]
+    x = [i.start // j*k for i, j, k in zip(slice[::-1], chunk_shape[::-1], m)]
+    return sum(x)
+
+
+def collect(
+    slices: Sequence[slice],
+    shape: Sequence[int],
+    chunk_shape: Sequence[int],
+    get_items: Callable,
+    level: int = 0,
+) -> np.ndarray:
+    p: np.ndarray = None
+    if level < len(slices):
+        num_of_pieces = ceil(slices[level].stop / chunk_shape[level])
+
+        for i in range(num_of_pieces):
+            _slices = copy(slices)
+            start = i * chunk_shape[level]
+
+            if i == num_of_pieces - 1:
+                stop = shape[level]
+            else:
+                stop = (i + 1) * chunk_shape[level]
+
+            _slices[level] = slice(start, stop)
+
+            q: np.ndarray = collect(
+                slices=_slices,
+                level=level + 1,
+                shape=shape,
+                chunk_shape=chunk_shape,
+                get_items=get_items
+            )
+            if p is None:
+                p = q
+                continue
+            p = np.concatenate((p, q), axis=level)
+        return p
+    else:
+        return get_items(slices)
+
+
 def chunk2list(chunk: Tuple[slice]) -> List[List[int]]:
     return [[s.start, s.stop, s.step] for s in chunk]
 
 
 def list2chunk(_list: List[List[int]]) -> Tuple[slice]:
     return tuple([slice(*el) for el in _list])
-
-
-def is_in(s, key):
-    conditions = []
-    for i, j in zip(s, key):
-        conditions.append(
-            (i.start < j.stop and i.start >= j.start) or (i.stop < j.stop and i.stop >= j.start) or
-            (j.start < i.stop and j.start >= i.start) or (
-                j.stop < i.stop and j.stop >= i.start)
-        )
-    return all(conditions)
-
-
-def varing_dim(a: List[int], b: List[int]):
-    for i, x in enumerate(zip(a, b)):
-        if x[0] != x[1]:
-            return i
-
-
-def sort_chunks(chunks) -> List[List]:
-    sorting = []
-    val = None
-    val2 = 1
-    for i in range(len(chunks)-1):
-        r = varing_dim(
-            chunks[i][1],
-            chunks[i+1][1]
-        )
-        if val is None:
-            val = r
-            sorting.append(
-                [
-                    [
-                        chunks[i][0]
-                    ],
-                    r,
-                    chunks[i][1]
-                ]
-            )
-        elif val == r:
-            val2 += 1
-            sorting[-1][0].append(
-                chunks[i][0]
-            )
-            sorting[-1][2] = tuple(x[0] if x[0] == x[1] else slice(x[0].start, x[1].stop)
-                                   for x in zip(sorting[-1][2], chunks[i+1][1]))
-        else:
-            sorting[-1][0].append(
-                chunks[i][0]
-            )
-            sorting[-1][2] = tuple(x[0] if x[0] == x[1] else slice(x[0].start, x[1].stop)
-                                   for x in zip(sorting[-1][2], chunks[i][1]))
-            val = None
-            val2 = 0
-
-        if i == len(chunks)-2:
-            sorting[-1][0].append(
-                chunks[i+1][0]
-            )
-            sorting[-1][2] = tuple(x[0] if x[0] == x[1] else slice(x[0].start, x[1].stop)
-                                   for x in zip(sorting[-1][2], chunks[i+1][1]))
-    return sorting
-
-
-def merge_datasets(datasets) -> List[Tuple[np.ndarray, slice]]:
-    dim1 = None
-    result = []
-    data = None
-    ss = None
-    for i in range(len(datasets)-1):
-        dim2 = varing_dim(
-            datasets[i][1],
-            datasets[i+1][1]
-        )
-        if dim1 is None:
-            dim1 = dim2
-            data = np.concatenate(
-                (datasets[i][0], datasets[i+1][0]),
-                axis=dim2
-            )
-            ss = tuple(x[0] if x[0] == x[1] else slice(x[0].start, x[1].stop)
-                       for x in zip(datasets[i][1], datasets[i+1][1]))
-            result.append([data, ss])
-        elif dim1 == dim2:
-            result[-1][0] = np.concatenate(
-                (result[-1][0], datasets[i+1][0]),
-                axis=dim2
-            )
-            ss = tuple(x[0] if x[0] == x[1] else slice(x[0].start, x[1].stop)
-                       for x in zip(ss, datasets[i+1][1]))
-            result[-1][1] = ss
-        else:
-            dim1 = None
-    return result
-
-
-def compute_key(a, b, shape=(0, 0, 0)) -> Tuple[slice]:
-    return tuple(
-        slice(
-            i.start,
-            k-abs(i.stop-j.stop),
-            i.step
-        ) for i, j, k in zip(a, b, shape)
-    )

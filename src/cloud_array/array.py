@@ -1,12 +1,12 @@
 from itertools import product
-from typing import AnyStr, Dict, List, Tuple
+from typing import AnyStr, Dict, List, Sequence, Tuple
 
 import numpy as np
 
 from cloud_array.backends import Backend, get_backend
 from cloud_array.exceptions import CloudArrayException
-from cloud_array.utils import (chunk2list, compute_key, compute_number_of_chunks, get_index_of_iter_product, is_in,
-                               merge_datasets, sort_chunks)
+from cloud_array.utils import (chunk2list, collect, compute_index_of_slice, compute_number_of_chunks,
+                               get_index_of_iter_product)
 
 
 class Chunk:
@@ -215,17 +215,17 @@ class CloudArray:
         return tuple(result)
 
     def __getitem__(self, key) -> np.ndarray:
-        key = self.parse_key(key)
-        chunks = [
-            (i, s) for i, s in enumerate(self.generate_chunks_slices()) if is_in(s, key)
-        ]
-        if len(chunks) == 1:
-            new_key = compute_key(key, chunks[0][1])
-            return self.get_chunk(chunks[0][0]).__getitem__(new_key)
-        sorted_chunks = sort_chunks(chunks)
-        datasets = self.initial_merge_of_chunks(sorted_chunks)
-        datasets = merge_datasets(datasets)
-        while len(datasets) > 1:
-            datasets = merge_datasets(datasets)
-        new_key = compute_key(key, datasets[0][1], datasets[0][0].shape)
-        return datasets[0][0].__getitem__(new_key)
+        new_key = self.parse_key(key)
+
+        def _get_chunk_data_by_key(key: Sequence[slice]):
+            idx = compute_index_of_slice(key, self.shape, self.chunk_shape)
+            chunk = self.get_chunk(idx)
+            return chunk[:, :, :]
+
+        dataset = collect(
+            slices=list(new_key),
+            shape=self.shape,
+            chunk_shape=self.chunk_shape,
+            get_items=_get_chunk_data_by_key
+        )
+        return dataset.__getitem__(new_key)
