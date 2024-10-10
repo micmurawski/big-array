@@ -45,37 +45,45 @@ def collect(
     shape: Sequence[int],
     chunk_shape: Sequence[int],
     get_items: Callable,
-    level: int = 0,
+    level: int = 0
 ) -> np.ndarray:
-    p: np.ndarray = None
-    if level < len(slices):
-        num_of_pieces = ceil(slices[level].stop / chunk_shape[level])
+    """
+    Recursively collects and concatenates chunks of data based on given slices.
 
-        for i in range(num_of_pieces):
-            _slices = copy(slices)
-            start = i * chunk_shape[level]
+    Args:
+        slices (Sequence[slice]): Sequence of slices defining the data to collect.
+        shape (Sequence[int]): Shape of the entire data array.
+        chunk_shape (Sequence[int]): Shape of each chunk.
+        get_items (Callable): Function to retrieve items for a given set of slices.
+        level (int): Current recursion level (dimension being processed).
 
-            if i == num_of_pieces - 1:
-                stop = shape[level]
-            else:
-                stop = (i + 1) * chunk_shape[level]
-
-            _slices[level] = slice(start, stop)
-
-            q: np.ndarray = collect(
-                slices=_slices,
-                level=level + 1,
-                shape=shape,
-                chunk_shape=chunk_shape,
-                get_items=get_items
-            )
-            if p is None:
-                p = q
-                continue
-            p = np.concatenate((p, q), axis=level)
-        return p
-    else:
+    Returns:
+        np.ndarray: Collected and concatenated data.
+    """
+    if level >= len(slices):
         return get_items(slices)
+
+    current_slice = slices[level]
+    num_chunks = ceil(current_slice.stop / chunk_shape[level])
+
+    chunks = []
+    for i in range(num_chunks):
+        start = i * chunk_shape[level]
+        stop = min((i + 1) * chunk_shape[level], shape[level])
+
+        new_slices = list(slices)
+        new_slices[level] = slice(start, stop)
+
+        chunk = collect(
+            slices=new_slices,
+            shape=shape,
+            chunk_shape=chunk_shape,
+            get_items=get_items,
+            level=level + 1
+        )
+        chunks.append(chunk)
+
+    return np.concatenate(chunks, axis=level)
 
 
 def chunk2list(chunk: Tuple[slice]) -> List[List[int]]:
@@ -94,10 +102,7 @@ def generate_chunks_slices(shape: Sequence[int], chunk_shape: Sequence[int]) -> 
     p = product(*_ranges)
     for i in p:
         yield tuple(
-            slice(
-                i[j],
-                min(shape[j], i[j]+chunk_shape[j])
-            )
+            slice(i[j], min(shape[j], i[j]+chunk_shape[j]))
             for j in range(len(shape))
         )
 
@@ -114,35 +119,45 @@ def get_chunk_slice_by_index(shape: Sequence[int], chunk_shape: Sequence[int], n
     )
 
 
-def parse_key_to_slices(shape: Sequence[int], chunk_shape: Sequence[int], key: Tuple[slice]):
-    result = []
-    for i in range(len(key)):
-        val = key[i]
-        if isinstance(val, int):
-            if val < 0:
-                val = shape[i] + val
-            result.append(
-                slice(val, val+1)
-            )
-        else:
-            start = val.start or 0
-            stop = val.stop or shape[i]
-            if start > shape[i] or stop > shape[i]:
-                raise CloudArrayException(
-                    f"Slice {key[i]} does not fit shape: {shape}.")
-            if start >= stop:
-                raise CloudArrayException(
-                    f"Key invalid slice {key[i]}. Start >= stop.")
-            if start < 0:
-                start = shape[i] + start
-            if stop < 0:
-                stop = shape[i] + stop
+def parse_key_to_slices(shape: Sequence[int], chunk_shape: Sequence[int], key: Tuple[slice]) -> slice:
+    """
+    Parses and normalizes a key into a tuple of slices based on the given shape.
 
-            result.append(
-                slice(
-                    start,
-                    stop,
-                    val.step if val.step else 1
-                )
-            )
-    return tuple(result)
+    This function takes a key (which can be a mix of integers and slices) and
+    converts it into a tuple of normalized slices. It handles negative indices
+    and ensures that all slices are within the bounds of the given shape.
+
+    Args:
+        shape (Sequence[int]): The shape of the array being indexed.
+        chunk_shape (Sequence[int]): The shape of each chunk in the array.
+            Note: This parameter is not used in the current implementation.
+        key (Tuple[slice]): The key used for indexing, can contain integers and slices.
+
+    Returns:
+        Tuple[slice]: A tuple of normalized slices corresponding to the input key.
+
+    Raises:
+        CloudArrayException: If any slice in the key is invalid or out of bounds.
+
+    Example:
+        >>> shape = (10, 10)
+        >>> chunk_shape = (5, 5)
+        >>> key = (slice(1, 5), 3)
+        >>> parse_key_to_slices(shape, chunk_shape, key)
+        (slice(1, 5, 1), slice(3, 4, 1))
+    """
+
+    def normalize_index(idx: int, dim: int) -> int:
+        return idx + dim if idx < 0 else idx
+
+    def validate_slice(s: slice, dim: int) -> slice:
+        start, stop = normalize_index(s.start or 0, dim), normalize_index(s.stop or dim, dim)
+        if start >= stop or start >= dim or stop > dim:
+            raise CloudArrayException(f"Invalid slice {s} for dimension {dim}")
+        return slice(start, stop, s.step or 1)
+
+    return tuple(
+        slice(normalize_index(k, shape[i]), normalize_index(k, shape[i]) + 1) if isinstance(k, int)
+        else validate_slice(k, shape[i])
+        for i, k in enumerate(key)
+    )
